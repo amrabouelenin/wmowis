@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "wis2metastore.fullname" . }}
+  labels:
+    {{- include "wis2metastore.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "wis2metastore.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wis2metastore.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "wis2metastore.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: HIVE_METASTORE_DRIVER
+              value: {{ quote .Values.global.HIVE_METASTORE_DRIVER }}
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wis-secrets
+                  key: s3-access-key
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wis-secrets
+                  key: s3-secret-key
+            - name: S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: wis-secrets
+                  key: s3-endpoint
+            - name: HIVE_METASTORE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: wis-secrets
+                  key: s3-hive-metastore-user
+            
+            - name: HIVE_METASTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wis-secrets
+                  key: s3-hive-metastore-password
+            - name: HIVE_METASTORE_JDBC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: wis-secrets
+                  key: s3-hive-metastore-jdbc-url
+            - name: HIVE_METASTORE_WAREHOUSE_DIR
+              valueFrom:
+                secretKeyRef:
+                  name: wis-secrets
+                  key: s3-hive-metastore-wareshouse-dir
+            - name: HIVE_METASTORE_USERS_IN_ADMIN_ROLE
+              valueFrom:
+                secretKeyRef:
+                  name: wis-secrets
+                  key: s3-hive-metastore-users-admin-role
+            - name: S3_PATH_STYLE_ACCESS
+              value: {{ quote .Values.global.S3_PATH_STYLE_ACCESS }}
+            - name: REGION
+              value: {{ quote .Values.global.REGION }}
+            - name: GOOGLE_CLOUD_KEY_FILE_PATH
+              value: {{ quote .Values.global.GOOGLE_CLOUD_KEY_FILE_PATH }}
+            - name: AZURE_ADL_CLIENT_ID
+              value: {{ quote .Values.global.AZURE_ADL_CLIENT_ID }}
+            - name: AZURE_ADL_CREDENTIAL
+              value: {{ quote .Values.global.AZURE_ADL_CREDENTIAL }}
+            - name: AZURE_ADL_REFRESH_URL
+              value: {{ quote .Values.global.AZURE_ADL_REFRESH_URL }}
+            - name: AZURE_ABFS_STORAGE_ACCOUNT
+              value: {{ quote .Values.global.AZURE_ABFS_STORAGE_ACCOUNT }}
+            - name: AZURE_ABFS_ACCESS_KEY
+              value: {{ quote .Values.global.AZURE_ABFS_ACCESS_KEY }}
+            - name: AZURE_WASB_STORAGE_ACCOUNT
+              value: {{ quote .Values.global.AZURE_WASB_STORAGE_ACCOUNT }}
+            - name: AZURE_ABFS_OAUTH
+              value: {{ quote .Values.global.AZURE_ABFS_OAUTH }}
+            - name: AZURE_ABFS_OAUTH_TOKEN_PROVIDER
+              value: {{ quote .Values.global.AZURE_ABFS_OAUTH_TOKEN_PROVIDER }}
+            - name: AZURE_ABFS_OAUTH_CLIENT_ID
+              value: {{ quote .Values.global.AZURE_ABFS_OAUTH_CLIENT_ID }}
+            - name: AZURE_ABFS_OAUTH_SECRET
+              value: {{ quote .Values.global.AZURE_ABFS_OAUTH_SECRET }}
+            - name: AZURE_ABFS_OAUTH_ENDPOINT
+              value: {{ quote .Values.global.AZURE_ABFS_OAUTH_ENDPOINT }}
+            - name: AZURE_WASB_ACCESS_KEY
+              value: {{ quote .Values.global.AZURE_WASB_ACCESS_KEY }}
+           

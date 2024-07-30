@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trino-etl-job
+spec:
+  schedule: "0 1 * * *" # Runs daily at midnight
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: trino-etl
+            image: "trinodb/trino:449"
+            volumeMounts:
+            - name: etl-sql
+              mountPath: /etl.sql
+              subPath: etl.sql
+            - name: etl-sh
+              mountPath: /etl.sh
+              subPath: etl.sh
+            command: ["/bin/sh", "-c"]
+            args: ["/bin/bash /etl.sh"]
+          restartPolicy: OnFailure
+          volumes:
+          - name: etl-sql
+            configMap:
+              name: trino-config
+              items:
+              - key: etl.sql
+                path: etl.sql
+          - name: etl-sh
+            configMap:
+              name: trino-config
+              items:
+              - key: etl.sh
+                path: etl.sh

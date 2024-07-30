@@ -1,0 +1,39 @@
+dependencies:
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 2.20.5
+- name: kafka
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 29.3.4
+- name: postgresql
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 15.5.9
+- name: loki-stack
+  repository: https://grafana.github.io/helm-charts
+  version: 2.10.2
+- name: prometheus
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 1.3.8
+- name: trino
+  repository: https://trinodb.github.io/charts
+  version: 0.25.0
+- name: wis2metastore
+  repository: file://charts/wis2metastore
+  version: 0.1.0
+- name: wis2bridge
+  repository: file://charts/wis2bridge
+  version: 0.1.0
+- name: wis2notification
+  repository: file://charts/wis2notification
+  version: 0.1.0
+- name: wis2content
+  repository: file://charts/wis2notification
+  version: 0.1.0
+- name: wis2decoding
+  repository: file://charts/wis2decoding
+  version: 0.1.0
+- name: wis2output
+  repository: file://charts/wis2output
+  version: 0.1.0
+digest: sha256:57e1a1d856109c44aee08b394d963019857afc81aa61d2d67fe5c0ad06999fcd
+generated: "2024-07-17T22:35:48.422513237+02:00"

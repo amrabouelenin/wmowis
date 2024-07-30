@@ -1,0 +1,12 @@
+image:
+  repository: starburstdata/hive
+  tag: 3.1.2-e.18
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+serviceAccount:
+  create: true
+
+autoscaling:
+  enabled: false

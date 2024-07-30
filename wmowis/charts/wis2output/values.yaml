@@ -1,0 +1,12 @@
+image:
+  repository: tproescholdt/wis2obsproc-output-processor
+  tag: develop-154dd64
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+serviceAccount:
+  create: true
+
+autoscaling:
+  enabled: false

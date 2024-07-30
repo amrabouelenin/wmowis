@@ -1,0 +1,755 @@
+
+commonLabels:
+serviceAccount:
+  create: false
+
+ingress:
+  enabled: false
+
+autoscaling:
+  enabled: false
+
+image:
+  repository: nginx
+  tag: ""
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+  annotations: {}
+
+global:
+  KAFKA_BROKER: 'wis-kafka.default.svc.cluster.local:9092'
+  TOPICS: 'cache/a/wis2/+/+/data/core/weather/surface-based-observations/synop,cache/a/wis2/+/data/core/weather/surface-based-observations/synop'
+  WIS_BROKER_HOST: 'test-broker.wis2-testing.net'
+  WIS_BROKER_PORT: 1883
+  VALIDATE_SSL: false
+  WIS_USERNAME: ''
+  WIS_PASSWORD: ''
+  LOG_LEVEL: 'INFO'
+  KAFKA_TOPIC: 'notifications'
+  REPORTING_THRESHOLD: 500
+  BATCH_SIZE: 50
+  CLIENT_ID: 'wis2bridge_test_amro'
+  CUSTOMERS_HOST: 'wis-kafka.default.svc.cluster.local'
+  CUSTOMERS_PORT: 9092
+  METRIC_PORT: 9100
+  NOTIFICATION_TOPIC: 'notifications'
+  NOTIFICATION_TOPIC_DEDUP: 'notifications-dedup'
+  NOTIFICATION_TOPIC_CONTENT: 'notifications-content'
+  NOTIFICATION_TOPIC_OUTPUT: 'notifications-output'
+  NOTIFICATION_TOPIC_TOSTORAGE: 'notifications-tostorage'
+  ERROR_TOPIC: 'errors'
+  KAFKA_NAME: 'kafka'
+  KAFKA_PORT: 9092
+  POLL_TIMEOUT_SEC: 60
+  POLL_BATCH_SIZE: 3000
+  NR_THREADS: 2
+  HIVE_METASTORE_DRIVER: org.postgresql.Driver
+  HIVE_METASTORE_JDBC_URL: ""
+  HIVE_METASTORE_USER: ""
+  HIVE_METASTORE_PASSWORD: ""
+  HIVE_METASTORE_WAREHOUSE_DIR: ""
+  S3_ENDPOINT: ""
+  S3_ACCESS_KEY: ""
+  S3_SECRET_KEY: ""
+  S3_PATH_STYLE_ACCESS: "true"
+  REGION: "eu-central-1"
+  GOOGLE_CLOUD_KEY_FILE_PATH: ""
+  AZURE_ADL_CLIENT_ID: ""
+  AZURE_ADL_CREDENTIAL: ""
+  AZURE_ADL_REFRESH_URL: ""
+  AZURE_ABFS_STORAGE_ACCOUNT: ""
+  AZURE_ABFS_ACCESS_KEY: ""
+  AZURE_WASB_STORAGE_ACCOUNT: ""
+  AZURE_ABFS_OAUTH: ""
+  AZURE_ABFS_OAUTH_TOKEN_PROVIDER: ""
+  AZURE_ABFS_OAUTH_CLIENT_ID: ""
+  AZURE_ABFS_OAUTH_SECRET: ""
+  AZURE_ABFS_OAUTH_ENDPOINT: ""
+  AZURE_WASB_ACCESS_KEY: ""
+  HIVE_METASTORE_USERS_IN_ADMIN_ROLE: ""
+  OFFSETS_USER: ""
+  OFFSETS_PWD: ""
+
+################### SUB CHARTS VALUES ###################
+### Wis2Bridge VALUES ###
+wis2bridge:
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+    port: 8002
+
+### Wis2Notification VALUES ###
+wis2notification:
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+    port: 8002
+
+### Wis2Content VALUES ###
+wis2content:
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+    port: 8002
+
+### Wis2Decoding VALUES ###
+wis2decoding:
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+    port: 8002
+
+### Wis2Output VALUES ###
+wis2output:
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+    port: 8002
+
+### Wis2Metastore VALUES ###
+wis2metastore:
+  service:
+    type: ClusterIP
+    port: 9083
+    targetPort: 9083
+    port: 9083
+### KAFAK VALUES ###
+kafka:
+  controller:
+    replicaCount: 3
+    persistence:
+      storageClass: "gp2"
+      size: 100Gi
+    resources:
+      requests:
+        memory: 6Gi
+        cpu: 3
+      limits:
+        memory: 8Gi
+        cpu: 4
+  commonLabels:
+    app: kafka
+  jmx:
+    enabled: true
+    port: 5555
+    resourcesPreset: "xlarge"
+  metrics:
+    jmx:
+      containerPorts:
+        metrics: 5556
+      lowercaseOutputName: true
+      lowercaseOutputLabelNames: true
+      enabled: true
+      extraRules: |-
+        - pattern : kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+          name: kafka_server_$1_$2
+          type: GAUGE
+          labels:
+            clientId: $3
+            topic: $4
+            partition: $5
+        - pattern : kafka.server<type=(.+), name=(.+), clientId=(.+), brokerHost=(.+), brokerPort=(.+)><>Value
+          name: kafka_server_$1_$2
+          type: GAUGE
+          labels:
+            clientId: $3
+            broker: $4:$5
+        - pattern : kafka.coordinator.(\w+)<type=(.+), name=(.+)><>Value
+          name: kafka_coordinator_$1_$2_$3
+          type: GAUGE
+        # Kraft current state info metric rule
+        - pattern: "kafka.server<type=raft-metrics><>current-state: ([a-z]+)"
+          name: kafka_server_raft_metrics_current_state_info
+          type: GAUGE
+          value: 1
+          labels:
+            state: $1
+        # Kraft specific rules for raft-metrics, raft-channel-metrics, broker-metadata-metrics
+        - pattern: kafka.server<type=(.+)><>([a-z-]+)-total
+          name: kafka_server_$1_$2_total
+          type: COUNTER
+        - pattern: kafka.server<type=(.+)><>([a-z-]+)
+          name: kafka_server_$1_$2
+          type: GAUGE
+
+        # Generic per-second counters with 0-2 key/value pairs
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+), (.+)=(.+)><>Count
+          name: kafka_$1_$2_$3_total
+          type: COUNTER
+          labels:
+            $4: $5
+            $6: $7
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+)><>Count
+          name: kafka_$1_$2_$3_total
+          type: COUNTER
+          labels:
+            $4: $5
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*><>Count
+          name: kafka_$1_$2_$3_total
+          type: COUNTER
+
+        # Quota specific rules
+        - pattern: kafka.server<type=(.+), user=(.+), client-id=(.+)><>([a-z-]+)
+          name: kafka_server_quota_$4
+          type: GAUGE
+          labels:
+            resource: $1
+            user: $2
+            clientId: $3
+        - pattern: kafka.server<type=(.+), client-id=(.+)><>([a-z-]+)
+          name: kafka_server_quota_$3
+          type: GAUGE
+          labels:
+            resource: $1
+            clientId: $2
+        - pattern: kafka.server<type=(.+), user=(.+)><>([a-z-]+)
+          name: kafka_server_quota_$3
+          type: GAUGE
+          labels:
+            resource: $1
+            user: $2
+
+        # Generic gauges with 0-2 key/value pairs
+        - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Value
+          name: kafka_$1_$2_$3
+          type: GAUGE
+          labels:
+            $4: $5
+            $6: $7
+        - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>Value
+          name: kafka_$1_$2_$3
+          type: GAUGE
+          labels:
+            $4: $5
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)><>Value
+          name: kafka_$1_$2_$3
+          type: GAUGE
+
+        # Emulate Prometheus 'Summary' metrics for the exported 'Histogram's.
+        #
+        # Note that these are missing the '_sum' metric!
+        - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Count
+          name: kafka_$1_$2_$3_count
+          type: COUNTER
+          labels:
+            $4: $5
+            $6: $7
+        - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.*), (.+)=(.+)><>(\d+)thPercentile
+          name: kafka_$1_$2_$3
+          type: GAUGE
+          labels:
+            $4: $5
+            $6: $7
+            quantile: 0.$8
+        - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>Count
+          name: kafka_$1_$2_$3_count
+          type: COUNTER
+          labels:
+            $4: $5
+        - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.*)><>(\d+)thPercentile
+          name: kafka_$1_$2_$3
+          type: GAUGE
+          labels:
+            $4: $5
+            quantile: 0.$6
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)><>Count
+          name: kafka_$1_$2_$3_count
+          type: COUNTER
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)><>(\d+)thPercentile
+          name: kafka_$1_$2_$3
+          type: GAUGE
+          labels:
+            quantile: 0.$4
+
+        # Generic gauges for MeanRate Percent
+        # Ex) kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>MeanRate
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)Percent\w*><>MeanRate
+          name: kafka_$1_$2_$3_percent
+          type: GAUGE
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)Percent\w*><>Value
+          name: kafka_$1_$2_$3_percent
+          type: GAUGE
+        - pattern: kafka.(\w+)<type=(.+), name=(.+)Percent\w*, (.+)=(.+)><>Value
+          name: kafka_$1_$2_$3_percent
+          type: GAUGE
+          labels:
+            $4: $5
+      resources:
+        requests:
+          memory: "2Gi"
+          cpu: "500m"
+        limits:
+          memory: "3Gi"
+          cpu: "1000m"
+  provisioning:
+    enabled: true
+    numPartitions: 1
+    topics: 
+      - name: 'notifications'
+        partitions: 1
+      - name: 'notifications-dedup'
+        partitions: 4
+      - name: 'notifications-content'
+        partitions: 2
+      - name: 'notifications-output'
+        partitions: 1
+      - name: 'notifications-tostorage'
+        partitions: 1
+      - name: 'errors'
+        partitions: 1
+  securityProtocol: "PLAINTEXT"
+  listeners:
+    client:
+      protocol: PLAINTEXT
+    interbroker:
+      protocol: PLAINTEXT
+
+### GRAFANA VALUES ###
+# grafana:
+#   persistence:
+#       enabled: true
+#       storageClass: "gp2"
+#   commonLabels:
+#     app: grafana
+#   sidecar:
+#     datasources:
+#       enabled: true
+#       label: grafana_datasource
+
+#   datasources:
+#     secretName: ""
+#     secretDefinition:
+#       apiVersion: 1
+#       datasources:
+#       - name: Prometheus
+#         type: prometheus
+#         url: http://wis-prometheus-server.default.svc.cluster.local
+#         isDefault: true
+#         access: proxy
+#         editable: true
+#       - name: Loki
+#         type: loki
+#         access: proxy
+#         url: http://wis-loki:3100
+#         basicAuth: false
+#         isDefault: false
+#         editable: true
+
+#   admin:
+#   ## @param admin.user Grafana admin username
+#     ##
+#     user: "admin"
+#     ## @param admin.password Admin password. If a password is not provided a random password will be generated
+#     ##
+#     password: "admin"
+#     ## @param admin.existingSecret Name of the existing secret containing admin password
+#     ##
+#     existingSecret: ""
+#     ## @param admin.existingSecretPasswordKey Password key on the existing secret
+#     ##
+#     existingSecretPasswordKey: password
+
+# hive-metastore:
+#   service:
+#     type: ClusterIP
+#     port: 9083
+#     targetPort: 9083
+#   commonLabels:
+#     app: hive-metastore
+  
+### POSTGRESQL VALUES ###
+postgresql:
+  global:
+    storageClass: "gp2"
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "gp2"
+  volumePermissions:
+    enabled: true 
+  commonLabels:
+    app: postgresql
+
+### LOKI VALUES ###
+loki-stack:
+  enabled: true
+  loki:
+    image:
+      repository: grafana/loki
+      tag: 2.9.3
+      pullPolicy: IfNotPresent
+  promtail:
+    enabled: true
+    config:
+      server:
+        http_listen_port: 9080
+        grpc_listen_port: 0
+
+      positions:
+        filename: /run/promtail/positions.yaml
+
+      clients:
+        - url: http://wis-loki:3100/loki/api/v1/push
+      scrape_configs:
+        # - job_name: kafka-controllers
+        - job_name: kubernetes-pods-name
+          kubernetes_sd_configs:
+            - role: pod
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_label_name]
+              target_label: __service__
+              action: replace
+            - source_labels: [__meta_kubernetes_namespace]
+              target_label: namespace
+              action: replace
+            - source_labels: [__meta_kubernetes_pod_node_name]
+              target_label: node
+              action: replace
+            - source_labels: [__meta_kubernetes_pod_name]
+              target_label: instance
+              action: replace
+            - source_labels: [__meta_kubernetes_pod_container_name]
+              target_label: container
+              action: replace
+            - source_labels: [__meta_kubernetes_pod_name]
+              regex: '(.*)'
+              target_label: pod
+              action: replace
+            - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_name, __meta_kubernetes_pod_container_name]
+              separator: '/'
+              target_label: job
+              action: replace
+  grafana:
+      enabled: true
+      sidecar:
+        datasources:
+          label: ""
+          labelValue: ""
+          enabled: true
+          maxLines: 1000
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              url: http://wis-prometheus-server.default.svc.cluster.local
+              isDefault: true
+              access: proxy
+              editable: true
+      image:
+        tag: latest
+
+### PROMETHEUS VALUES ###
+prometheus:
+
+  server:
+    resources:
+      requests:
+        memory: 4Gi
+        cpu: 400m
+      limits:
+        memory: 8Gi
+        cpu: 1000m
+    global:
+      scrape_interval: 10s
+      scrape_timeout: 40s # important for jmx metrics
+    # persistence:
+    #   enabled: true
+    #   mountPath: /bitnami/alertmanager/data
+    #   subPath: ""
+    #   storageClass: "gp2"
+    commonLabels:
+      app: prometheus
+    extraScrapeConfigs:
+      - job_name: 'kafka'
+        static_configs:
+          - targets: ['wis-kafka-jmx-metrics.default.svc.cluster.local:5556']
+        metrics_path: '/metrics'
+        scheme: 'http'
+      - job_name: 'wis2bridge'
+        static_configs:
+          - targets: ['wis-wis2bridge.default.svc.cluster.local:9100']
+        metrics_path: '/metrics'
+        scheme: 'http'
+      
+      - job_name: 'wis2content'
+        static_configs:
+          - targets: ['wis-wis2content.default.svc.cluster.local:9100']
+        metrics_path: '/metrics'
+        scheme: 'http'
+      
+      - job_name: 'wis2notification'
+        static_configs:
+          - targets: ['wis-wis2notification.default.svc.cluster.local:9100']
+        metrics_path: '/metrics'
+        scheme: 'http'
+
+      - job_name: 'wis2decoding'
+        static_configs:
+          - targets: ['wis-wis2decoding.default.svc.cluster.local:9100']
+        metrics_path: '/metrics'
+        scheme: 'http'
+
+      - job_name: 'wis2output'
+        static_configs:
+          - targets: ['wis-wis2output.default.svc.cluster.local:9100']
+        metrics_path: '/metrics'
+        scheme: 'http'
+  
+      # - job_name: "kubernetes-cadvisor"
+      #   scheme: http
+      #   metrics_path: /metrics/cadvisor
+      #   # tls_config:
+      #   #   ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      #   authorization:
+      #     credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      #   kubernetes_sd_configs:
+      #     - role: node
+      #   relabel_configs:
+      #     - action: labelmap
+      #       regex: __meta_kubernetes_node_label_(.+)
+      
+      - job_name: "kubernetes-pods"
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          # Exclude Kafka pods as it make error with Kafka  InvalidReceiveException: Invalid receive (size = 1195725856 larger than 104857600)  
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: drop
+            regex: kafka
+  
+      - job_name: 'kubernetes-nodes-cadvisor'
+        scheme: https
+        scrape_interval: 10s
+        scrape_timeout: 10s
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+        metric_relabel_configs:
+          - action: replace
+            source_labels: [id]
+            regex: '^/machine\.slice/machine-rkt\\x2d([^\\]+)\\.+/([^/]+)\.service$'
+            target_label: rkt_container_name
+            replacement: '${2}-${1}'
+          - action: replace
+            source_labels: [id]
+            regex: '^/system\.slice/(.+)\.service$'
+            target_label: systemd_service_name
+            replacement: '${1}'
+
+
+  # Example scrape config for service endpoints.
+  #
+  # The relabeling allows the actual service scrape endpoint to be configured
+  # for all or only some endpoints.
+
+
+  # - job_name: 'content-processor'
+  #   static_configs:
+  #     - targets: ['content-processor:8002']
+
+  #- job_name: postgres-exporter
+  #  static_configs:
+  #    - targets: ["postgres-exporter:9187"]
+
+  # - job_name: 'hiveserver2'
+  #   static_configs:
+  #     - targets: ['hiveserver2:7071']
+
+  # - job_name: 'metastore'
+  #   static_configs:
+  #     - targets: ['metastore:7071']
+
+### TRINO VALUES ###
+trino:
+  env:
+    - name: OFFSETS_PWD
+      valueFrom:
+        secretKeyRef:
+          name: wis-secrets
+          key: offsets-password
+    - name: OFFSETS_USER
+      valueFrom:
+        secretKeyRef:
+          name: wis-secrets
+          key: offsets-user
+    - name: S3_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: wis-secrets
+          key: s3-access-key
+    - name: S3_ENDPOINT
+      valueFrom:
+        secretKeyRef:
+          name: wis-secrets
+          key: s3-endpoint
+    - name: S3_SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: wis-secrets
+          key: s3-secret-key
+    - name: HIVE_METASTORE_JDBC_URL
+      valueFrom:
+        secretKeyRef:
+          name: wis-secrets
+          key: s3-hive-metastore-jdbc-url
+  kafka:
+    mountPath: "/etc/trino/kafka"
+    tableDescriptions:
+      notifications-tostorage.json: |-
+          {
+            "tableName": "notifications-tostorage",
+            "schemaName": "default",
+            "topicName": "notifications-tostorage",
+            "message": {
+                "dataFormat": "json",
+                "fields": [
+                    {
+                        "name": "wigos_id",
+                        "mapping": "wigos_id",
+                        "type": "VARCHAR"
+                    },
+                    {
+                        "name": "result_time",
+                        "mapping": "result_time",
+                        "type": "TIMESTAMP",
+                        "dataFormat": "iso8601"
+                    },
+                    {
+                        "name": "phenomenon_time",
+                        "mapping": "phenomenon_time",
+                        "type": "VARCHAR"
+                    },
+                    {
+                        "name": "latitude",
+                        "mapping": "latitude",
+                        "type": "DOUBLE"
+                    },
+                    {
+                        "name": "longitude",
+                        "mapping": "longitude",
+                        "type": "DOUBLE"
+                    },
+                    {
+                        "name": "altitude",
+                        "mapping": "altitude",
+                        "type": "DOUBLE"
+                    },
+                    {
+                        "name": "observed_property",
+                        "mapping": "observed_property",
+                        "type": "VARCHAR"
+                    },
+                    {
+                        "name": "observed_value",
+                        "mapping": "observed_value",
+                        "type": "DOUBLE"
+                    },
+                    {
+                        "name": "observed_unit",
+                        "mapping": "observed_unit",
+                        "type": "VARCHAR"
+                    },
+                    {
+                        "name": "notification_data_id",
+                        "mapping": "notification_data_id",
+                        "type": "VARCHAR"
+                    },
+                    {
+                        "name": "notification_pubtime",
+                        "mapping": "notification_pubtime",
+                        "type": "TIMESTAMP",
+                        "dataFormat": "iso8601"
+                    },
+                    {
+                        "name": "notification_wigos_id",
+                        "mapping": "notification_wigos_id",
+                        "type": "VARCHAR"
+                    },
+                    {
+                        "name": "meta_broker",
+                        "mapping": "meta_broker",
+                        "type": "VARCHAR"
+                    },
+                    {
+                        "name": "meta_topic",
+                        "mapping": "meta_topic",
+                        "type": "VARCHAR"
+                    },
+                    {
+                        "name": "meta_time_received",
+                        "mapping": "meta_time_received",
+                        "type": "TIMESTAMP",
+                        "dataFormat": "iso8601"
+                    }
+                ]
+            }
+          }
+  server:
+    workers: 3
+    node:
+      environment: production
+      dataDir: /data/trino
+      pluginDir: /usr/lib/trino/plugin
+    log:
+      trino:
+        level: INFO
+    config:
+      path: /etc/trino
+      http:
+        port: 8080
+      https:
+        enabled: false
+        port: 8443
+        keystore:
+          path: ""
+      authenticationType: ""
+      query:
+        maxMemory: "9GB"
+  additionalCatalogs:
+    kafka: |
+      connector.name=kafka
+      kafka.nodes=wis-kafka-controller-0.wis-kafka-controller-headless.default.svc.cluster.local:9092,wis-kafka-controller-1.wis-kafka-controller-headless.default.svc.cluster.local:9092,wis-kafka-controller-2.wis-kafka-controller-headless.default.svc.cluster.local:9092
+      kafka.table-names=notifications-tostorage
+      kafka.default-schema=default
+      kafka.hide-internal-columns=true
+    hive: |
+      connector.name=hive
+      hive.metastore.uri=thrift://wis-wis2metastore-0.wis-wis2metastore.default.svc.cluster.local:9083
+      hive.s3.endpoint=${ENV:S3_ENDPOINT}
+      hive.s3.path-style-access=true
+      hive.s3.aws-access-key=${ENV:S3_ACCESS_KEY}
+      hive.s3.aws-secret-key=${ENV:S3_SECRET_KEY}
+      hive.s3.ssl.enabled=true
+      hive.s3.region=eu-central-1
+    postgresql: |
+      connector.name=postgresql
+      connection-url=${ENV:HIVE_METASTORE_JDBC_URL}
+      connection-user=${ENV:OFFSETS_USER}
+      connection-password=${ENV:OFFSETS_PWD}

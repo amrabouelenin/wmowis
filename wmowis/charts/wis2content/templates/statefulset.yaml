@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "wis2content.fullname" . }}
+  labels:
+    {{- include "wis2content.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "wis2content.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wis2content.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "wis2content.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: KAFKA_BROKER
+              value: {{ .Values.global.KAFKA_BROKER }}
+            - name: KAFKA_PUBTOPIC
+              value: {{ .Values.global.NOTIFICATION_TOPIC_CONTENT }}
+            - name: KAFKA_TOPIC
+              value: {{ .Values.global.NOTIFICATION_TOPIC_DEDUP }}
+            - name: KAFKA_ERROR_TOPIC
+              value: {{ .Values.global.ERROR_TOPIC }}
+            - name: LOG_LEVEL
+              value: {{ .Values.global.LOG_LEVEL }}
+            - name: POLL_TIMEOUT_SEC
+              value: {{ quote .Values.global.POLL_TIMEOUT_SEC }}
+            - name: POLL_BATCH_SIZE
+              value: {{ quote .Values.global.POLL_BATCH_SIZE }}
+            - name: NR_THREADS
+              value: {{ quote .Values.global.NR_THREADS }}
+            - name: CLIENT_ID
+              value: {{ .Values.global.CLIENT_ID }}
+            - name: CUSTOMERS_HOST
+              value: {{ .Values.global.CUSTOMERS_HOST }}
+            - name: CUSTOMERS_PORT
+              value: {{ quote .Values.global.CUSTOMERS_PORT }}
+            - name: METRIC_PORT
+              value: {{ quote .Values.global.METRIC_PORT }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.global.METRIC_PORT }} 
+              protocol: TCP
