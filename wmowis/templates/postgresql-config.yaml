@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+data:
+  init_wisdb.sh: |
+    #!/bin/bash
+    export PGPASSWORD="${POSTGRES_PASSWORD}"
+    psql -v ON_ERROR_STOP=1 --username "postgres" <<-EOSQL
+      DROP DATABASE IF EXISTS metastore;
+      DROP DATABASE IF EXISTS offsets;
+      CREATE DATABASE metastore;
+      CREATE DATABASE offsets;
+      DO \$\$
+      BEGIN
+          IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '${HIVE_USER}') THEN
+              CREATE USER ${HIVE_USER} WITH PASSWORD '${HIVE_PASSWORD}';
+          END IF;
+          IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '${OFSFETS_USER}') THEN
+              CREATE USER ${OFSFETS_USER} WITH PASSWORD '${OFFSETS_PASSWORD}';
+          END IF;
+      END
+      \$\$;
+
+      GRANT CREATE ON DATABASE metastore TO ${HIVE_USER};
+      GRANT CREATE ON DATABASE metastore TO ${OFSFETS_USER};
+      GRANT CREATE ON DATABASE offsets TO ${HIVE_USER};
+      GRANT CREATE ON DATABASE offsets TO ${OFSFETS_USER};
+
+      \connect metastore;
+      CREATE TABLE IF NOT EXISTS kafka_table_offsets AS (
+          SELECT 0 as kafka_partition_id, -1 as kafka_partition_offset, CURRENT_TIMESTAMP as insert_time, 'lower_bound' as bound
+      );
+
+      GRANT CREATE ON SCHEMA public TO ${HIVE_USER};
+      GRANT CREATE ON SCHEMA public TO ${OFSFETS_USER};
+      GRANT ALL PRIVILEGES ON TABLE public.kafka_table_offsets TO ${OFSFETS_USER};
+
+      \connect offsets;
+      GRANT CREATE ON SCHEMA public TO ${HIVE_USER};
+      GRANT CREATE ON SCHEMA public TO ${OFSFETS_USER};
+    EOSQL

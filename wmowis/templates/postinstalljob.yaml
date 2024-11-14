@@ -1,0 +1,27 @@
+{{- if .Values.postinstalljob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.postinstalljob.name }}
+  labels:
+    {{- include "wmowis.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    spec:
+      containers:
+        - name: {{ .Values.postinstalljob.name }}
+          image: "{{ .Values.postinstalljob.image.repository }}:{{ .Values.postinstalljob.image.tag }}"
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          command: {{ toYaml .Values.postinstalljob.command | nindent 10 }}
+      restartPolicy: Never
+      volumes:
+          - name: scripts
+            configMap:
+              name: trino-config
+{{- end }}
+

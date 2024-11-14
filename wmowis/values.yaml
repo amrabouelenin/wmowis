@@ -74,6 +74,13 @@ global:
   OFFSETS_USER: ""
   OFFSETS_PWD: ""
 
+postinstalljob:
+  image:
+    repository: trinodb/trino
+    tag: "449"
+  enabled: true
+  name: trino-postinstall
+  command: ["/bin/bash", "-c", "mkdir -p /tmp/scripts && cp /scripts/init.sh /tmp/scripts/init.sh && chmod +x /tmp/scripts/init.sh && /tmp/scripts/init.sh && echo 'Trino Initdb script completed'"]
 ################### SUB CHARTS VALUES ###################
 ### Wis2Bridge VALUES ###
 wis2bridge:
@@ -124,10 +131,12 @@ wis2metastore:
     port: 9083
 ### KAFAK VALUES ###
 kafka:
+  extraConfig: |
+    logRetentionHours=168
   controller:
     replicaCount: 3
     persistence:
-      storageClass: "gp2"
+      storageClass: "wis-sc"
       size: 100Gi
     resources:
       requests:
@@ -313,67 +322,48 @@ kafka:
     interbroker:
       protocol: PLAINTEXT
 
-### GRAFANA VALUES ###
-# grafana:
-#   persistence:
-#       enabled: true
-#       storageClass: "gp2"
-#   commonLabels:
-#     app: grafana
-#   sidecar:
-#     datasources:
-#       enabled: true
-#       label: grafana_datasource
-
-#   datasources:
-#     secretName: ""
-#     secretDefinition:
-#       apiVersion: 1
-#       datasources:
-#       - name: Prometheus
-#         type: prometheus
-#         url: http://wis-prometheus-server.default.svc.cluster.local
-#         isDefault: true
-#         access: proxy
-#         editable: true
-#       - name: Loki
-#         type: loki
-#         access: proxy
-#         url: http://wis-loki:3100
-#         basicAuth: false
-#         isDefault: false
-#         editable: true
-
-#   admin:
-#   ## @param admin.user Grafana admin username
-#     ##
-#     user: "admin"
-#     ## @param admin.password Admin password. If a password is not provided a random password will be generated
-#     ##
-#     password: "admin"
-#     ## @param admin.existingSecret Name of the existing secret containing admin password
-#     ##
-#     existingSecret: ""
-#     ## @param admin.existingSecretPasswordKey Password key on the existing secret
-#     ##
-#     existingSecretPasswordKey: password
-
-# hive-metastore:
-#   service:
-#     type: ClusterIP
-#     port: 9083
-#     targetPort: 9083
-#   commonLabels:
-#     app: hive-metastore
-  
 ### POSTGRESQL VALUES ###
 postgresql:
   global:
-    storageClass: "gp2"
+    storageClass: "wis-sc"
+  auth:
+    existingSecret: wis-secrets
+    existingSecretKey: postgresql-password
+    username: postgres
+    database: postgres
   primary:
+    extraEnvVars:
+      - name: HIVE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: wis-secrets
+            key: s3-hive-metastore-password
+      - name: HIVE_USER
+        valueFrom:
+          secretKeyRef:
+            name: wis-secrets
+            key: s3-hive-metastore-user
+      - name: OFSFETS_USER
+        valueFrom:
+          secretKeyRef:
+            name: wis-secrets
+            key: offsets-user
+      - name: OFFSETS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: wis-secrets
+            key: offsets-password
+      - name: POSTGRES_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: wis-secrets
+            key: postgres-password
+    initdb:
+      scriptsConfigMap: postgres-init-scripts
+      scriptsSecret: wis-secrets
     persistence:
       enabled: true
-      storageClass: "gp2"
+      storageClass: "wis-sc"
   volumePermissions:
     enabled: true 
   commonLabels:
@@ -429,26 +419,56 @@ loki-stack:
               target_label: job
               action: replace
   grafana:
-      enabled: true
-      sidecar:
+    enabled: true
+    sidecar:
+      datasources:
+        enabled: true
+        label: grafana_datasource
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        folder: /var/lib/grafana/dashboards
+        searchNamespace: ALL
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
         datasources:
-          label: ""
-          labelValue: ""
-          enabled: true
-          maxLines: 1000
-          datasources:
-            - name: Prometheus
-              type: prometheus
-              url: http://wis-prometheus-server.default.svc.cluster.local
-              isDefault: true
-              access: proxy
-              editable: true
-      image:
-        tag: latest
+        - name: Prometheus
+          type: prometheus
+          url: http://wis-prometheus-server.default.svc.cluster.local
+          access: proxy
+          isDefault: false
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://wis-loki:3100
+          isDefault: true
+          editable: true
 
+    # dashboardProviders:
+    #   dashboardproviders.yaml:
+    #     apiVersion: 1
+    #     providers:
+    #       - name: 'test_dashboard'
+    #         orgId: 1
+    #         folder: ''
+    #         type: file
+    #         disableDeletion: false
+    #         editable: true
+    #         options:
+    #           path: /var/lib/grafana/dashboards
+    # dashboards:
+    #   test_dashboard:
+    #     file: /files/kubernetes.json
+    # dashboardsConfigMaps:
+    #   default: "grafana-dashboards"
+    # extraConfigmapMounts:
+    # - name: grafana-dashboard-configmap
+    #   mountPath: /var/lib/grafana/dashboards
+    #   subPath: ""
+    #   readOnly: true
 ### PROMETHEUS VALUES ###
 prometheus:
-
   server:
     resources:
       requests:
@@ -464,7 +484,7 @@ prometheus:
     #   enabled: true
     #   mountPath: /bitnami/alertmanager/data
     #   subPath: ""
-    #   storageClass: "gp2"
+    #   storageClass: "wis-sc"
     commonLabels:
       app: prometheus
     extraScrapeConfigs:
@@ -502,7 +522,11 @@ prometheus:
           - targets: ['wis-wis2output.default.svc.cluster.local:9100']
         metrics_path: '/metrics'
         scheme: 'http'
-  
+      # - job_name: 'trino'
+      #   static_configs:
+      #     - targets: ['wis-trino.default.svc.cluster.local:5556']
+      #   metrics_path: '/metrics'
+      #   scheme: 'http'
       # - job_name: "kubernetes-cadvisor"
       #   scheme: http
       #   metrics_path: /metrics/cadvisor
@@ -741,7 +765,7 @@ trino:
       kafka.hide-internal-columns=true
     hive: |
       connector.name=hive
-      hive.metastore.uri=thrift://wis-wis2metastore-0.wis-wis2metastore.default.svc.cluster.local:9083
+      hive.metastore.uri=thrift://wis-wis2metastore.default.svc.cluster.local:9083
       hive.s3.endpoint=${ENV:S3_ENDPOINT}
       hive.s3.path-style-access=true
       hive.s3.aws-access-key=${ENV:S3_ACCESS_KEY}

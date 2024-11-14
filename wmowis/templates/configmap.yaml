@@ -6,7 +6,53 @@ data:
   kafka.properties: |
     connector.name=kafka
     kafka.nodes=wis-kafka.default.svc.cluster.local:9092
-  
+  init.sql: |
+    -- will be applied in post-install
+    CREATE SCHEMA IF NOT EXISTS hive.datalake
+    WITH (location = 's3a://wis2obsprocessing/');
+    -- will be applied in post-install
+    CREATE TABLE IF NOT EXISTS hive.datalake.observations 
+    ( 
+        "wigos_id" varchar,
+        "result_time" timestamp,
+        "phenomenon_time" varchar,
+        "latitude" double,
+        "longitude" double,
+        "altitude" double,
+        "observed_property" varchar,
+        "observed_value" double,
+        "observed_unit" varchar,
+        "notification_data_id" varchar,
+        "notification_pubtime" timestamp,
+        "notification_wigos_id" varchar,
+        "meta_broker"   varchar,
+        "meta_topic"    varchar,
+        "meta_time_received" timestamp
+    )
+    WITH (
+        format = 'ORC'
+    );
+  init.sh: |
+    #!/bin/bash
+    # blocks until trino is reachable
+    echo "starting script to run trino init"
+    while ! trino --server wis-trino:8080 --execute 'SHOW CATALOGS' | grep "system"; do
+        echo "trino is not reachable, sleeping"
+        sleep 5
+    done
+
+    # # wait until there is data in the topic
+    # while trino --server wis-trino:8080 --execute 'select count(*) from kafka.default."notifications-tostorage"' | grep -e '"0"'; do
+    #     echo "No data in the topic, sleeping"
+    #     sleep 5
+    # done 
+
+    echo -e 'Creating trino catalog'
+    cat /scripts/init.sql | trino --server wis-trino:8080
+
+    echo -e 'Successfully created the following catalogs:'
+    trino --server wis-trino:8080 --execute 'SHOW CATALOGS'
+
   etl.sql: |-
     INSERT INTO postgresql.public."kafka_table_offsets"
     SELECT
@@ -72,7 +118,8 @@ data:
     else
         echo "trino schema not yet initialized"
     fi
-  
+
+
   notifications-tostorage.json: |
     {
         "tableName": "notifications-tostorage",
@@ -162,7 +209,6 @@ data:
             ]
         }
     }
-
 {{- range $key, $value := .Values.trino.additionalCatalogs }}
   {{ $key }}.properties: |-
 {{ $value | indent 4 }}
