@@ -73,7 +73,7 @@ global:
   HIVE_METASTORE_USERS_IN_ADMIN_ROLE: ""
   OFFSETS_USER: ""
   OFFSETS_PWD: ""
-
+## Postinstall job after all pods are ready to initialize the database
 postinstalljob:
   image:
     repository: trinodb/trino
@@ -81,6 +81,7 @@ postinstalljob:
   enabled: true
   name: trino-postinstall
   command: ["/bin/bash", "-c", "mkdir -p /tmp/scripts && cp /scripts/init.sh /tmp/scripts/init.sh && chmod +x /tmp/scripts/init.sh && /tmp/scripts/init.sh && echo 'Trino Initdb script completed'"]
+
 ################### SUB CHARTS VALUES ###################
 ### Wis2Bridge VALUES ###
 wis2bridge:
@@ -467,6 +468,7 @@ loki-stack:
     #   mountPath: /var/lib/grafana/dashboards
     #   subPath: ""
     #   readOnly: true
+
 ### PROMETHEUS VALUES ###
 prometheus:
   server:
@@ -522,40 +524,13 @@ prometheus:
           - targets: ['wis-wis2output.default.svc.cluster.local:9100']
         metrics_path: '/metrics'
         scheme: 'http'
-      # - job_name: 'trino'
-      #   static_configs:
-      #     - targets: ['wis-trino.default.svc.cluster.local:5556']
-      #   metrics_path: '/metrics'
-      #   scheme: 'http'
-      # - job_name: "kubernetes-cadvisor"
-      #   scheme: http
-      #   metrics_path: /metrics/cadvisor
-      #   # tls_config:
-      #   #   ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-      #   authorization:
-      #     credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-      #   kubernetes_sd_configs:
-      #     - role: node
-      #   relabel_configs:
-      #     - action: labelmap
-      #       regex: __meta_kubernetes_node_label_(.+)
       
-      - job_name: "kubernetes-pods"
-        kubernetes_sd_configs:
-          - role: pod
-        relabel_configs:
-          - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
-          - source_labels: [__meta_kubernetes_namespace]
-            action: replace
-            target_label: namespace
-          - source_labels: [__meta_kubernetes_pod_name]
-            action: replace
-            target_label: pod
-          # Exclude Kafka pods as it make error with Kafka  InvalidReceiveException: Invalid receive (size = 1195725856 larger than 104857600)  
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            action: drop
-            regex: kafka
+      - job_name: 'trino'
+        static_configs:
+          - targets:
+            - 'wis-trino:8080'
+        basic_auth:
+          username: admin
   
       - job_name: 'kubernetes-nodes-cadvisor'
         scheme: https
@@ -587,6 +562,15 @@ prometheus:
             target_label: systemd_service_name
             replacement: '${1}'
 
+      - job_name: 'kube-state-metrics'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            regex: kube-state-metrics
+            action: keep
+        metrics_path: /metrics
+        scheme: http
 
   # Example scrape config for service endpoints.
   #
@@ -612,6 +596,89 @@ prometheus:
 
 ### TRINO VALUES ###
 trino:
+
+  # Coordinator configuration
+  coordinator:
+    enabled: true
+    replicas: 1
+    resources:
+      requests:
+        memory: 4Gi
+        cpu: 1
+      limits:
+        memory: 8Gi
+        cpu: 2
+
+    # JVM config for JMX
+    jvmConfig:
+      - "-server"
+      - "-XX:+UseG1GC"
+      - "-XX:G1HeapRegionSize=32M"
+      - "-XX:+ExplicitGCInvokesConcurrent"
+      - "-XX:+HeapDumpOnOutOfMemoryError"
+      - "-XX:+ExitOnOutOfMemoryError"
+      - "-Dcom.sun.management.jmxremote"
+      - "-Dcom.sun.management.jmxremote.port=9090"
+      - "-Dcom.sun.management.jmxremote.local.only=false"
+      - "-Dcom.sun.management.jmxremote.authenticate=false"
+      - "-Dcom.sun.management.jmxremote.ssl=false"
+
+    # Add JMX Exporter as a sidecar
+    sidecars:
+      - name: jmx-exporter
+        image: bitnami/jmx-exporter:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8080
+        args:
+          - '--config.file=/config/jmx-exporter-config.yaml'
+        volumeMounts:
+          - name: config
+            mountPath: /config
+
+  workers:
+    replicas: 3
+    resources:
+      requests:
+        memory: 4Gi
+        cpu: 1
+      limits:
+        memory: 8Gi
+        cpu: 2
+
+    # JVM config for JMX
+    jvmConfig:
+      - "-server"
+      - "-XX:+UseG1GC"
+      - "-XX:G1HeapRegionSize=32M"
+      - "-XX:+ExplicitGCInvokesConcurrent"
+      - "-XX:+HeapDumpOnOutOfMemoryError"
+      - "-XX:+ExitOnOutOfMemoryError"
+      - "-Dcom.sun.management.jmxremote"
+      - "-Dcom.sun.management.jmxremote.port=9090"
+      - "-Dcom.sun.management.jmxremote.local.only=false"
+      - "-Dcom.sun.management.jmxremote.authenticate=false"
+      - "-Dcom.sun.management.jmxremote.ssl=false"
+
+    # Add JMX Exporter as a sidecar
+    sidecars:
+      - name: jmx-exporter
+        image: bitnami/jmx-exporter:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8080
+        args:
+          - '--config.file=/config/jmx-exporter-config.yaml'
+        volumeMounts:
+          - name: config
+            mountPath: /config
+
+  # Define extra volumes to hold JMX Exporter configuration
+  extraVolumes:
+    - name: config
+      configMap:
+        name: jmx-exporter-config
+
   env:
     - name: OFFSETS_PWD
       valueFrom:

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  labels:
+    grafana_dashboard: "1"
+data:
+  kubernetes.json: |
+    {{ .Files.Get "../files/kubernetes.json" | indent 4 }}
+  grafana-dashboard-kafka.json: |
+    {{ .Files.Get "../files/grafana-dashboard-kafka.json" | indent 4 }}
+  grafana-dashboard-wis2process.json: |
+    {{ .Files.Get "../files/grafana-dashboard-wis2process.json" | indent 4 }}

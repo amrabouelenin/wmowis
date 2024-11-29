@@ -112,13 +112,37 @@ data:
   
   etl.sh: |-
     #!/bin/bash
-    if trino --server wis-trino:8080 --execute 'select count(*) from postgresql.public."kafka_table_offsets"' |  grep -ve '"0"' ; then
-        echo "executing ETL job"
-        cat /etl.sql | trino --server wis-trino:8080
-    else
-        echo "trino schema not yet initialized"
-    fi
 
+    # Define variables for server and SQL commands
+    TRINO_SERVER="wis-trino:8080"
+    CHECK_TABLE1_SQL='SELECT COUNT(*) FROM postgresql.public."kafka_table_offsets"'
+    CHECK_TABLE2_SQL='SELECT COUNT(*) FROM kafka.default."notifications-tostorage"'
+    ETL_SQL_FILE="/etl.sql"
+
+    # Function to execute a SQL command via Trino
+    execute_trino_sql() {
+        local sql_command=$1
+        trino --server "$TRINO_SERVER" --execute "$sql_command"
+    }
+
+    # Check the record counts for both tables
+    echo "Checking record counts for required tables..."
+    record_count1=$(execute_trino_sql "$CHECK_TABLE1_SQL" | grep -ve '"0"')
+    record_count2=$(execute_trino_sql "$CHECK_TABLE2_SQL" | grep -E '"[2-9]|[1-9][0-9]+"' )
+
+    if [ -n "$record_count1" ] && [ -n "$record_count2" ]; then
+        echo "Both conditions met. Executing ETL job..."
+        # Execute the ETL job if both conditions are satisfied
+        cat "$ETL_SQL_FILE" | trino --server "$TRINO_SERVER"
+    else
+        echo "Conditions not met. ETL job will not be executed."
+        if [ -z "$record_count1" ]; then
+            echo "Condition failed: kafka_table_offsets has no records."
+        fi
+        if [ -z "$record_count2" ]; then
+            echo "Condition failed: notifications-tostorage has insufficient records (<= 1)."
+        fi
+    fi
 
   notifications-tostorage.json: |
     {
