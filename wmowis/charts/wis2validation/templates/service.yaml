@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "wis2validation.fullname" . }}
+  labels:
+    {{- include "wis2validation.labels" . | nindent 4 }}
+spec:
+  ports:
+    - port: 8080
+      name: http
+  clusterIP: None  # This makes the service headless
+  selector:
+    app.kubernetes.io/name: {{ include "wis2validation.name" . }}
