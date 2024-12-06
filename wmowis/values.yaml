@@ -28,7 +28,7 @@ global:
   VALIDATE_SSL: false
   WIS_USERNAME: ''
   WIS_PASSWORD: ''
-  LOG_LEVEL: 'INFO'
+  LOG_LEVEL: 'DEBUG'
   KAFKA_TOPIC: 'notifications'
   REPORTING_THRESHOLD: 500
   BATCH_SIZE: 50
@@ -41,6 +41,7 @@ global:
   NOTIFICATION_TOPIC_CONTENT: 'notifications-content'
   NOTIFICATION_TOPIC_OUTPUT: 'notifications-output'
   NOTIFICATION_TOPIC_TOSTORAGE: 'notifications-tostorage'
+  NOTIFICATION_TOPIC_VALID: 'notification-validation'
   ERROR_TOPIC: 'errors'
   KAFKA_NAME: 'kafka'
   KAFKA_PORT: 9092
@@ -85,6 +86,14 @@ postinstalljob:
 ################### SUB CHARTS VALUES ###################
 ### Wis2Bridge VALUES ###
 wis2bridge:
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+    port: 8002
+
+### Wis2Bridge VALUES ###
+wis2validation:
   service:
     type: ClusterIP
     port: 80
@@ -500,7 +509,13 @@ prometheus:
           - targets: ['wis-wis2bridge.default.svc.cluster.local:9100']
         metrics_path: '/metrics'
         scheme: 'http'
-      
+
+      - job_name: 'wis2validation'
+        static_configs:
+          - targets: ['wis-wis2validation.default.svc.cluster.local:9100']
+        metrics_path: '/metrics'
+        scheme: 'http'
+
       - job_name: 'wis2content'
         static_configs:
           - targets: ['wis-wis2content.default.svc.cluster.local:9100']

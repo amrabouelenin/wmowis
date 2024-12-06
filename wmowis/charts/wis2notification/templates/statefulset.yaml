@@ -25,7 +25,7 @@ spec:
             - name: KAFKA_PUBTOPIC
               value: {{ .Values.global.NOTIFICATION_TOPIC_DEDUP }}
             - name: KAFKA_TOPIC
-              value: {{ .Values.global.NOTIFICATION_TOPIC }}
+              value: {{ .Values.global.NOTIFICATION_TOPIC_VALID }}
             - name: KAFKA_ERROR_TOPIC
               value: {{ .Values.global.KAFKA_ERROR_TOPIC }}
             - name: LOG_LEVEL

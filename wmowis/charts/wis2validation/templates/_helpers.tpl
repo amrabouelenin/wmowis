@@ -1,18 +1,18 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "wis2bridge.fullname" -}}
+{{- define "wis2validation.fullname" -}}
 {{- printf "%s-%s" .Release.Name .Chart.Name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
 Create a default name using the release name and the chart name.
 */}}
-{{- define "wis2bridge.name" -}}
+{{- define "wis2validation.name" -}}
 {{- printf "%s-%s" .Release.Name .Chart.Name -}}
 {{- end -}}
 
-{{- define "wis2bridge.labels" -}}
+{{- define "wis2validation.labels" -}}
 {{- $labels := dict -}}
 {{- $labels = merge $labels (dict "app.kubernetes.io/name" .Chart.Name) -}}
 {{- $labels = merge $labels (dict "app.kubernetes.io/instance" .Release.Name) -}}
@@ -25,7 +25,7 @@ Create a default name using the release name and the chart name.
 {{/*
 Selector labels
 */}}
-{{- define "wis2bridge.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "wis2bridge.name" . }}
+{{- define "wis2validation.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "wis2validation.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}

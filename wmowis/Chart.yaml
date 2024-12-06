@@ -72,4 +72,7 @@ dependencies:
     version: 0.1.0
     repository: file://charts/wis2output
 
+  - name: wis2validation
+    version: 0.1.0
+    repository: file://charts/wis2validation
 

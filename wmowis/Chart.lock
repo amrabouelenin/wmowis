@@ -1,7 +1,7 @@
 dependencies:
 - name: common
   repository: oci://registry-1.docker.io/bitnamicharts
-  version: 2.20.5
+  version: 2.27.2
 - name: kafka
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 29.3.4
@@ -35,5 +35,8 @@ dependencies:
 - name: wis2output
   repository: file://charts/wis2output
   version: 0.1.0
-digest: sha256:57e1a1d856109c44aee08b394d963019857afc81aa61d2d67fe5c0ad06999fcd
-generated: "2024-07-17T22:35:48.422513237+02:00"
+- name: wis2validation
+  repository: file://charts/wis2validation
+  version: 0.1.0
+digest: sha256:4294d7108a5ce3247f5a153b8112734ca6a6c79dcbddd47da62c2d72756cabf1
+generated: "2024-12-03T10:44:37.236917334+01:00"

@@ -1,6 +1,6 @@
 image:
   repository: tproescholdt/wis2kafkabridge
-  tag: develop-04722bd
+  tag: develop-4067864
   pullPolicy: IfNotPresent
 
 replicaCount: 1
