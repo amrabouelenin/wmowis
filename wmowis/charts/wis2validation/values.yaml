@@ -1,6 +1,5 @@
 image:
   repository: tproescholdt/wis2obsproc-validation-processor
-  tag: develop-4067864
   pullPolicy: IfNotPresent
 
 replicaCount: 1

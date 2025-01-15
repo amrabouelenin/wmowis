@@ -1,7 +1,10 @@
 image:
   repository: tproescholdt/wis2obsproc-output-processor
-  tag: develop-4067864
   pullPolicy: IfNotPresent
+
+data_mapping_file: /app/data-mapping-observations.txt
+keys: wigos_id,notification_data_id,result_time
+group_id: "my-consumer-output-1"
 
 replicaCount: 1
 

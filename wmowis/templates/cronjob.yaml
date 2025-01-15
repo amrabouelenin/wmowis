@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: trino-etl-job
 spec:
-  schedule: "0 1 * * *" # Runs daily at midnight
+  schedule: "*/5 * * * *" # Runs daily at midnight
   jobTemplate:
     spec:
       template:
