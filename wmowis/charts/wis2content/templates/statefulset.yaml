@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.global.WIS2IMAGETAG }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KAFKA_BROKER
@@ -25,7 +25,7 @@ spec:
             - name: KAFKA_PUBTOPIC
               value: {{ .Values.global.NOTIFICATION_TOPIC_CONTENT }}
             - name: KAFKA_TOPIC
-              value: {{ .Values.global.NOTIFICATION_TOPIC_DEDUP }}
+              value: {{ .Values.global.NOTIFICATION_TOPIC_VALID }}
             - name: KAFKA_ERROR_TOPIC
               value: {{ .Values.global.ERROR_TOPIC }}
             - name: LOG_LEVEL
@@ -44,6 +44,10 @@ spec:
               value: {{ quote .Values.global.CUSTOMERS_PORT }}
             - name: METRIC_PORT
               value: {{ quote .Values.global.METRIC_PORT }}
+            # - name: REMOVE_NO_CONTENT
+            #   value: {{ .Values.REMOVE_NO_CONTENT }}
+            # - name: DOWNLOAD_MODE
+            #   value: {{ .Values.DOWNLOAD_MODE }}
           ports:
             - name: metrics
               containerPort: {{ .Values.global.METRIC_PORT }} 

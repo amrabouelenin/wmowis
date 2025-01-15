@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.global.WIS2IMAGETAG }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KAFKA_BROKER
@@ -56,7 +56,17 @@ spec:
               value: {{ quote .Values.global.CUSTOMERS_PORT }}
             - name: METRIC_PORT
               value: {{ quote .Values.global.METRIC_PORT }}
+            - name: ROUTING_FILE
+              value : {{ .Values.routing_file }}
           ports:
             - name: metrics
               containerPort: {{ .Values.global.METRIC_PORT }} 
               protocol: TCP
+          volumeMounts:
+            - name: routing-config-volume
+              mountPath: /app/message-routing.json
+              subPath: message-routing.json
+      volumes:
+        - name: routing-config-volume
+          configMap:
+            name: {{ include "wis2bridge.fullname" . }}-routing-config

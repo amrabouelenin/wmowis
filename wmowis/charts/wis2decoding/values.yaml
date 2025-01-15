@@ -1,9 +1,8 @@
 image:
   repository: tproescholdt/wis2obsproc-decoding-processor
-  tag: develop-4067864
   pullPolicy: IfNotPresent
 
-replicaCount: 1
+replicaCount: 3
 
 serviceAccount:
   create: true
