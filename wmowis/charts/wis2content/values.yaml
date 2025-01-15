@@ -1,9 +1,10 @@
 image:
   repository: tproescholdt/wis2obsproc-content-processor
-  tag: develop-4067864
   pullPolicy: IfNotPresent
 
-replicaCount: 1
+REMOVE_NO_CONTENT: "true"
+DOWNLOAD_MODE: "true"
+replicaCount: 3
 
 serviceAccount:
   create: true

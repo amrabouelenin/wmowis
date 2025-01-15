@@ -1,9 +1,8 @@
 image:
   repository: tproescholdt/wis2kafkabridge
-  tag: develop-4067864
   pullPolicy: IfNotPresent
-
 replicaCount: 1
+routing_file: /app/message-routing.json
 
 serviceAccount:
   create: true

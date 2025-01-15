@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wis2bridge.fullname" . }}-routing-config
+  labels:
+    {{- include "wis2bridge.labels" . | nindent 4 }}
+data:
+  message-routing.json: |
+    {
+      "cache/a/wis2/+/+/data/core/weather/surface-based-observations/synop" : ["notifications"],
+      "cache/a/wis2/+/data/core/weather/surface-based-observations/synop" : ["notifications" ]
+    }
